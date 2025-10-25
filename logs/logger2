@@ -1,0 +1,6 @@
+[2025-10-25 17:35:10] LOGGER: New session =============================
+[2025-10-25 17:35:10] PING: ping
+[2025-10-25 17:35:14] INFO: hello world!
+[2025-10-25 17:35:17] INFO: exit
+[2025-10-25 17:35:17] LOGGER: PARENT CLOSED SUCCESSFULLY
+

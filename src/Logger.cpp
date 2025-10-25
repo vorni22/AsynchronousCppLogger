@@ -1,7 +1,11 @@
 #include "Logger.h"
 
-Logger::Logger(std::string path, int waiting_time) {
-    int fd = shm_open(SHARED_MEM_NAME, O_CREAT | O_RDWR, 0666);
+std::unordered_map<std::string, Logger*> Loggers::loggers;
+
+Logger::Logger(std::string name, int waiting_time) {
+    log_name = SHARED_MEM_NAME + name;
+
+    int fd = shm_open(log_name.c_str(), O_CREAT | O_RDWR, 0666);
     ftruncate(fd, sizeof(LoggerBuffer));
     shm_buff = (LoggerBuffer*)mmap(nullptr, sizeof(LoggerBuffer), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     close(fd);
@@ -10,7 +14,7 @@ Logger::Logger(std::string path, int waiting_time) {
 
     seconds_to_wait_for_print = waiting_time;
     started = false;
-    file_path = path;
+    file_path = LOGS_LOCATION + name;
 
     logger_type_to_string[PING] = " PING: ";
     logger_type_to_string[INFO] = " INFO: ";
@@ -22,7 +26,7 @@ Logger::Logger(std::string path, int waiting_time) {
 
 Logger::~Logger() {
     shm_buff->parent_closed.store(true);
-    shm_unlink(SHARED_MEM_NAME);
+    shm_unlink(log_name.c_str());
 }
 
 void Logger::start_logger() {
@@ -214,5 +218,24 @@ void Logger::logger_code() {
         }
     }
 
-    shm_unlink(SHARED_MEM_NAME); 
+    shm_unlink(log_name.c_str()); 
+}
+
+Logger *Loggers::logs(std::string log) {
+    if (loggers.count(log) == 0 || loggers[log] == nullptr) {
+        loggers[log] = new Logger(log);
+    }
+
+    return loggers[log];
+}
+
+void Loggers::close_logs() {
+    for (auto log : loggers) {
+        if (log.second != nullptr)
+            delete log.second;
+    }
+}
+
+Logger *Loggers::logs() {
+    return logs(DEFAULT_LOGGER);
 }

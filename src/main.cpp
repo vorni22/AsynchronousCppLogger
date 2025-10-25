@@ -10,14 +10,16 @@ void segfault() {
 }
 
 int main() {
-    Logger logger("test.txt", -1);
-    logger.start_logger();
+    Loggers::logs("logger1")->start_logger();
+    Loggers::logs("logger2")->start_logger();
 
-    logger.ping_logger();
+    Loggers::logs("logger1")->ping_logger();
+    Loggers::logs("logger2")->ping_logger();
 
     std::string line;
     while (std::getline(std::cin, line)) {
-        logger.push_logger(INFO, line.c_str());
+        Loggers::logs("logger1")->push_logger(INFO, line.c_str());
+        Loggers::logs("logger2")->push_logger(INFO, line.c_str());
 
         if (line == "exit")
             break;
@@ -26,6 +28,8 @@ int main() {
             segfault();
         }
     }
+
+    Loggers::close_logs();
 
     return 0;
 }

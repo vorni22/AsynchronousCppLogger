@@ -23,7 +23,9 @@
 #include <sys/prctl.h>
 #include <unordered_map>
 
-#define SHARED_MEM_NAME "/vorni_logger"
+#define LOGS_LOCATION "logs/"
+#define DEFAULT_LOGGER "default"
+#define SHARED_MEM_NAME "/vorni_logger_"
 #define LOGGER_SIZE 1024 * 1024
 #define POLL_TIMEOUT 5
 
@@ -45,7 +47,7 @@ struct LoggerBuffer {
 
 class Logger {
 public:
-    Logger(std::string path, int waiting_time);
+    Logger(std::string path, int waiting_time = -1);
     ~Logger();
 
     void start_logger();
@@ -69,6 +71,17 @@ private:
     std::string file_path;
     int efd;
     LoggerBuffer *shm_buff;
+    std::string log_name;
 
     std::unordered_map<LoggerMessageType, std::string> logger_type_to_string;
+};
+
+class Loggers {
+public:
+    static Logger *logs();
+    static Logger *logs(std::string log);
+
+    static void close_logs();
+private:
+    static std::unordered_map<std::string, Logger*> loggers;
 };
