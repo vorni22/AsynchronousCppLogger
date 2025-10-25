@@ -6,7 +6,11 @@ Logger::Logger(std::string name, int waiting_time) {
     log_name = SHARED_MEM_NAME + name;
 
     int fd = shm_open(log_name.c_str(), O_CREAT | O_RDWR, 0666);
-    ftruncate(fd, sizeof(LoggerBuffer));
+    int rc = ftruncate(fd, sizeof(LoggerBuffer));
+    if (rc) {
+        exit(1);
+    }
+
     shm_buff = (LoggerBuffer*)mmap(nullptr, sizeof(LoggerBuffer), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     close(fd);
 
@@ -42,13 +46,17 @@ void Logger::start_logger() {
 }
 
 void Logger::push_logger(LoggerMessageType type, const char *format, ...) {
+    if (!started) {
+        start_logger();
+    }
+
     std::ostringstream oss;
     print_time(oss);
     
     if (logger_type_to_string.count(type)) {
-        oss << logger_type_to_string[type] << format;
+        oss << logger_type_to_string[type] << format << "\n";
     } else {
-        oss << " UNKNOWN: " << format;
+        oss << " UNKNOWN: " << format << "\n";
     }
 
     va_list args;
@@ -113,13 +121,19 @@ void Logger::report_silence(std::ostream &os, int how_much) {
     os.flush();
 }
 
-void Logger::print_to_logger(const char *format, ...)
-{
+void Logger::print_to_logger(std::string str) {
+    uint32_t w = shm_buff->write_index.load();
+    for (size_t j = 0; j < str.size(); ++j)
+        shm_buff->buffer[(w + j) % sizeof(shm_buff->buffer)] = str[j];
+
+    shm_buff->write_index.store((w + str.size()) % sizeof(shm_buff->buffer));
+
+    eventfd_write(efd, 1);
+}
+
+void Logger::print_to_logger(const char *format, va_list args) {
     if (!started)
         return;
-
-    va_list args;
-    va_start(args, format);
 
     va_list args_copy;
     va_copy(args_copy, args);
@@ -130,6 +144,28 @@ void Logger::print_to_logger(const char *format, ...)
     std::vsnprintf(buf.data(), buf.size(), format, args);
     va_end(args);
 
+    uint32_t w = shm_buff->write_index.load();
+    for (size_t j = 0; j < buf.size() - 1; ++j)
+        shm_buff->buffer[(w + j) % sizeof(shm_buff->buffer)] = buf[j];
+
+    shm_buff->write_index.store((w + buf.size() - 1) % sizeof(shm_buff->buffer));
+
+    eventfd_write(efd, 1);
+}
+
+void Logger::print_to_logger_with_endl(const char *format, va_list args) {
+    if (!started)
+        return;
+
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int size = std::vsnprintf(nullptr, 0, format, args_copy);
+    va_end(args_copy);
+
+    std::vector<char> buf(size + 1, 0);
+    std::vsnprintf(buf.data(), buf.size(), format, args);
+    va_end(args);
+
     buf[size] = '\n';
 
     uint32_t w = shm_buff->write_index.load();
@@ -137,6 +173,17 @@ void Logger::print_to_logger(const char *format, ...)
         shm_buff->buffer[(w + j) % sizeof(shm_buff->buffer)] = buf[j];
 
     shm_buff->write_index.store((w + buf.size()) % sizeof(shm_buff->buffer));
+
+    eventfd_write(efd, 1);
+}
+
+void Logger::endl_to_logger() {
+    if (!started)
+        return;
+
+    uint32_t w = shm_buff->write_index.load();
+    shm_buff->buffer[w] = '\n';
+    shm_buff->write_index.store((w + 1) % sizeof(shm_buff->buffer));
 
     eventfd_write(efd, 1);
 }

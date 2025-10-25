@@ -19,7 +19,7 @@ int main() {
     std::string line;
     while (std::getline(std::cin, line)) {
         Loggers::logs("logger1")->push_logger(INFO, line.c_str());
-        Loggers::logs("logger2")->push_logger(INFO, line.c_str());
+        Loggers::logs("logger2")->push_logger(INFO, "look at this line %s", line.c_str());
 
         if (line == "exit")
             break;

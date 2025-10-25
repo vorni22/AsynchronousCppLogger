@@ -63,7 +63,11 @@ private:
     static void report_exit(std::ostream &os);
     static void report_silence(std::ostream &os, int how_much);
 
-    void print_to_logger(const char* format, ...);
+    void print_to_logger(std::string str);
+    void print_to_logger(const char* format, va_list args);
+    void print_to_logger_with_endl(const char* format, va_list args);
+    void endl_to_logger();
+
     void logger_code();
 
     int seconds_to_wait_for_print;
