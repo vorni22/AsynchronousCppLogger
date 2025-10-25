@@ -281,6 +281,8 @@ void Loggers::close_logs() {
         if (log.second != nullptr)
             delete log.second;
     }
+
+    loggers.clear();
 }
 
 Logger *Loggers::logs() {
