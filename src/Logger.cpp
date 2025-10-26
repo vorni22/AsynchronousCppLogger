@@ -227,7 +227,6 @@ void Logger::logger_code() {
             uint64_t val;
             eventfd_read(efd, &val);
 
-            // TO DO: write to file
             uint32_t w = shm_buff->write_index.load();
             uint32_t r = shm_buff->read_index.load();
 
